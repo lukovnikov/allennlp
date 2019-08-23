@@ -371,6 +371,9 @@ class DomainLanguage:
         '<int,int:int> -> add', 'int -> 2', 'int -> 3']``.
         """
         expression = util.lisp_to_nested_expression(logical_form)
+        return self._expression_to_action_sequence(expression)
+
+    def _expression_to_action_sequence(self, expression):
         try:
             transitions, start_type = self._get_transitions(expression, expected_type=None)
             if self._start_types and start_type not in self._start_types:
@@ -382,6 +385,19 @@ class DomainLanguage:
         return transitions
 
     def action_sequence_to_logical_form(self, action_sequence: List[str]) -> str:
+        """
+        Takes an action sequence as produced by :func:`logical_form_to_action_sequence`, which is a
+        linearization of an abstract syntax tree, and reconstructs the logical form defined by that
+        abstract syntax tree.
+        """
+        # Basic outline: we assume that the bracketing that we get in the RHS of each action is the
+        # correct bracketing for reconstructing the logical form.  This is true when there is no
+        # currying in the action sequence.  Given this assumption, we just need to construct a tree
+        # from the action sequence, then output all of the leaves in the tree, with brackets around
+        # the children of all non-terminal nodes.
+        return nltk_tree_to_logical_form(self.action_sequence_to_tree(action_sequence))
+
+    def action_sequence_to_tree(self, action_sequence: List[str]) -> Tree:
         """
         Takes an action sequence as produced by :func:`logical_form_to_action_sequence`, which is a
         linearization of an abstract syntax tree, and reconstructs the logical form defined by that
@@ -406,7 +422,8 @@ class DomainLanguage:
             logger.error("Error parsing action sequence: %s", action_sequence)
             logger.error("Remaining actions were: %s", remaining_actions)
             raise ParsingError("Extra actions in action sequence")
-        return nltk_tree_to_logical_form(tree)
+        return tree
+
 
     def add_predicate(self, name: str, function: Callable, side_arguments: List[str] = None):
         """
